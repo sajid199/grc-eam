@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EAM / Firefighter — Interview Console</title>
+<style>
+  :root{
+    --paper:#F5F6F2;
+    --panel:#FFFFFF;
+    --ink:#10233D;
+    --ink-soft:#4A5A72;
+    --line:#DDE2E6;
+    --navy:#10233D;
+    --navy-2:#1B3A63;
+    --alert:#B3401E;
+    --alert-soft:#F4E3DC;
+    --ok:#2F6B4F;
+    --ok-soft:#E1EFE6;
+    --amber:#C68A1E;
+    --amber-soft:#F6ECD8;
+    --mono: "IBM Plex Mono", "Courier New", monospace;
+    --serif: "Fraunces", Georgia, serif;
+    --sans: "IBM Plex Sans", Arial, sans-serif;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(180deg, rgba(16,35,61,0.02), rgba(16,35,61,0) 240px),
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* faint console grid texture on the hero */
+  .grid-tex{
+    background-image:
+      linear-gradient(rgba(16,35,61,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(16,35,61,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  a{color:inherit;}
+
+  /* ---------- Top status bar ---------- */
+  .statusbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 28px;
+    background:var(--navy);
+    color:#EDEFF3;
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.03em;
+  }
+  .statusbar .dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:#5FBF83; margin-right:8px; box-shadow:0 0 0 3px rgba(95,191,131,0.25);
+  }
+  .statusbar .seg{display:flex; align-items:center; gap:18px; opacity:0.9;}
+  .statusbar .seg span.k{color:#9FB2C9;}
+
+  /* ---------- Hero ---------- */
+  header.hero{
+    padding:56px 28px 40px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+    overflow:hidden;
+  }
+  .hero-inner{max-width:1180px; margin:0 auto; position:relative; z-index:2;}
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--alert); display:flex; align-items:center; gap:10px; margin-bottom:18px;
+  }
+  .eyebrow::before{content:""; width:22px; height:1px; background:var(--alert); display:inline-block;}
+  h1.title{
+    font-family:var(--serif); font-weight:700; font-size:clamp(34px, 5vw, 58px);
+    line-height:1.05; margin:0 0 14px; letter-spacing:-0.01em; max-width:820px;
+  }
+  h1.title em{font-style:italic; color:var(--navy-2);}
+  .lede{
+    font-size:17px; color:var(--ink-soft); max-width:640px; line-height:1.6; margin:0 0 30px;
+  }
+  .lede b{color:var(--ink);}
+
+  .ticket-badge{
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--alert);
+    padding:10px 16px; border-radius:4px; font-family:var(--mono); font-size:12.5px;
+    box-shadow:0 1px 2px rgba(16,35,61,0.04);
+  }
+
+  /* ---------- Toolbar (search + filters) ---------- */
+  .toolbar{
+    max-width:1180px; margin:34px auto 0; padding:0 28px;
+    display:flex; flex-wrap:wrap; gap:14px; align-items:center;
+  }
+  .search-wrap{
+    flex:1 1 320px; position:relative;
+  }
+  .search-wrap input{
+    width:100%; padding:14px 16px 14px 42px; border-radius:6px; border:1px solid var(--line);
+    background:var(--panel); font-family:var(--sans); font-size:14.5px; color:var(--ink);
+    outline:none; transition:border-color .15s, box-shadow .15s;
+  }
+  .search-wrap input:focus{border-color:var(--navy-2); box-shadow:0 0 0 3px rgba(27,58,99,0.12);}
+  .search-wrap svg{
+    position:absolute; left:14px; top:50%; transform:translateY(-50%); width:16px; height:16px;
+    stroke:var(--ink-soft);
+  }
+  .count-pill{
+    font-family:var(--mono); font-size:12px; color:var(--ink-soft); white-space:nowrap;
+  }
+  .actions{display:flex; gap:10px;}
+  button.btn{
+    font-family:var(--sans); font-weight:600; font-size:13.5px; cursor:pointer;
+    border-radius:6px; padding:12px 18px; border:1px solid var(--navy); background:var(--navy); color:#fff;
+    display:flex; align-items:center; gap:8px; transition:transform .12s, background .15s;
+  }
+  button.btn:hover{background:var(--navy-2); transform:translateY(-1px);}
+  button.btn.ghost{background:transparent; color:var(--navy); border:1px solid var(--line);}
+  button.btn.ghost:hover{border-color:var(--navy); background:rgba(16,35,61,0.03);}
+  button.btn svg{width:15px; height:15px;}
+
+  /* ---------- Filter chips ---------- */
+  .chips{
+    max-width:1180px; margin:16px auto 0; padding:0 28px;
+    display:flex; flex-wrap:wrap; gap:8px;
+  }
+  .chip{
+    font-family:var(--mono); font-size:12px; padding:7px 13px; border-radius:20px;
+    border:1px solid var(--line); background:var(--panel); cursor:pointer; color:var(--ink-soft);
+    transition:all .12s; user-select:none;
+  }
+  .chip:hover{border-color:var(--navy-2); color:var(--navy);}
+  .chip.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+
+  /* ---------- Layout ---------- */
+  .layout{
+    max-width:1180px; margin:38px auto 80px; padding:0 28px;
+    display:grid; grid-template-columns: 250px 1fr; gap:34px;
+  }
+  @media (max-width:880px){ .layout{grid-template-columns:1fr;} }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{position:sticky; top:20px; align-self:start;}
+  .side-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px;
+    margin-bottom:18px;
+  }
+  .side-card h3{
+    font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--ink-soft); margin:0 0 12px;
+  }
+  .toc-item{
+    display:flex; justify-content:space-between; padding:8px 0; font-size:13.5px;
+    border-bottom:1px dashed var(--line); cursor:pointer; color:var(--ink-soft);
+  }
+  .toc-item:last-child{border-bottom:none;}
+  .toc-item:hover{color:var(--navy);}
+  .toc-item .n{font-family:var(--mono); font-size:11.5px; color:var(--alert);}
+
+  .param-row{display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .param-row:last-child{border-bottom:none;}
+  .param-row .code{font-family:var(--mono); background:var(--amber-soft); color:#7A5416; padding:2px 7px; border-radius:4px; font-size:12px; font-weight:600;}
+  .param-row .desc{color:var(--ink-soft); text-align:right; max-width:150px;}
+
+  .profile-card{
+    background:var(--navy); color:#EDEFF3; border-radius:8px; padding:20px; font-size:13px; line-height:1.6;
+  }
+  .profile-card .name{font-family:var(--serif); font-size:18px; font-weight:600; margin-bottom:4px;}
+  .profile-card .role{color:#9FB2C9; font-family:var(--mono); font-size:11.5px; margin-bottom:12px;}
+
+  /* ---------- Main content ---------- */
+  .section-block{margin-bottom:44px;}
+  .section-head{
+    display:flex; align-items:baseline; gap:14px; margin-bottom:6px; padding-bottom:10px; border-bottom:2px solid var(--navy);
+  }
+  .section-head .tag{
+    font-family:var(--mono); font-size:11px; background:var(--navy); color:#fff; padding:4px 9px; border-radius:4px;
+  }
+  .section-head h2{font-family:var(--serif); font-size:23px; margin:0; font-weight:600;}
+  .section-sub{color:var(--ink-soft); font-size:13.5px; margin:8px 0 20px;}
+
+  /* Ticket-style accordion card */
+  .qa-card{
+    background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--line);
+    border-radius:6px; margin-bottom:12px; overflow:hidden;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .qa-card:hover{box-shadow:0 2px 10px rgba(16,35,61,0.06);}
+  .qa-card.open{border-left-color:var(--alert);}
+  .qa-q{
+    display:flex; align-items:center; gap:14px; padding:16px 18px; cursor:pointer;
+  }
+  .qa-q .qid{
+    font-family:var(--mono); font-size:11px; color:#fff; background:var(--ink-soft);
+    padding:3px 8px; border-radius:4px; flex-shrink:0;
+  }
+  .qa-card.open .qa-q .qid{background:var(--alert);}
+  .qa-q .qtext{font-weight:600; font-size:14.5px; flex:1; line-height:1.4;}
+  .qa-q .chev{
+    width:20px; height:20px; flex-shrink:0; transition:transform .2s; color:var(--ink-soft);
+  }
+  .qa-card.open .qa-q .chev{transform:rotate(180deg); color:var(--alert);}
+  .qa-a{
+    max-height:0; overflow:hidden; transition:max-height .28s ease;
+  }
+  .qa-a-inner{
+    padding:0 18px 20px 62px; font-size:14px; line-height:1.7; color:var(--ink-soft);
+  }
+  .qa-a-inner p{margin:0 0 12px;}
+  .qa-a-inner p:last-child{margin-bottom:0;}
+  .qa-a-inner code, .tcode{
+    font-family:var(--mono); background:var(--amber-soft); color:#7A5416; padding:1px 7px;
+    border-radius:4px; font-size:12.5px; font-weight:600; white-space:nowrap;
+  }
+  .qa-a-inner .role-badge{
+    font-family:var(--mono); background:#E7ECF2; color:var(--navy-2); padding:1px 7px;
+    border-radius:4px; font-size:12.5px; font-weight:600;
+  }
+  .callout{
+    background:var(--ok-soft); border-left:3px solid var(--ok); padding:10px 14px; border-radius:4px;
+    font-size:13px; color:#204533; margin-top:10px;
+  }
+  .callout.warn{background:var(--alert-soft); border-left-color:var(--alert); color:#6E2610;}
+  .callout b{display:block; font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;}
+
+  .qa-card[data-topic]{}
+
+  /* ---------- Process flow ---------- */
+  .flow-wrap{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:26px; margin-bottom:16px;
+    overflow-x:auto;
+  }
+  .flow{display:flex; align-items:stretch; gap:0; min-width:760px;}
+  .flow-step{
+    flex:1; text-align:center; position:relative; padding:0 8px;
+  }
+  .flow-step .num{
+    width:30px; height:30px; border-radius:50%; background:var(--navy); color:#fff; font-family:var(--mono);
+    font-size:12.5px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px;
+  }
+  .flow-step .lbl{font-size:12.5px; font-weight:600; line-height:1.35; color:var(--ink);}
+  .flow-step::after{
+    content:"→"; position:absolute; right:-6px; top:9px; color:var(--line); font-size:16px;
+  }
+  .flow-step:last-child::after{content:"";}
+
+  /* ---------- No results ---------- */
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-soft);
+  }
+  .empty-state .big{font-family:var(--serif); font-size:22px; color:var(--ink); margin-bottom:6px;}
+
+  /* ---------- Footer ---------- */
+  footer{
+    border-top:1px solid var(--line); padding:26px 28px; text-align:center; font-size:12px; color:var(--ink-soft);
+    font-family:var(--mono);
+  }
+
+  /* ---------- Print styles ---------- */
+  @media print{
+    .statusbar, .toolbar, .chips, .sidebar, footer, .no-print{display:none !important;}
+    body{background:#fff;}
+    .layout{grid-template-columns:1fr; margin:0; padding:0 10px;}
+    header.hero{padding:10px 0 20px; border:none;}
+    .qa-a{max-height:none !important;}
+    .qa-card{break-inside:avoid; border:1px solid #ccc; box-shadow:none; margin-bottom:10px;}
+    .qa-q .chev{display:none;}
+    .section-block{break-inside:avoid-page;}
+    .flow-wrap{overflow:visible;}
+    a{text-decoration:none; color:inherit;}
+  }
+</style>
+</head>
+<body>
+
+<div class="statusbar">
+  <div class="seg">
+    <span><span class="dot"></span>GRC SYSTEM: <b>ONLINE</b></span>
+    <span><span class="k">MODULE&nbsp;</span>EAM · FIREFIGHTER</span>
+    <span class="hide-sm"><span class="k">CONNECTOR SYNC&nbsp;</span>OK</span>
+  </div>
+  <div class="seg"><span>SAP GRC ACCESS CONTROL — INTERVIEW CONSOLE</span></div>
+</div>
+
+<header class="hero grid-tex">
+  <div class="hero-inner">
+    <div class="eyebrow">Emergency Access Management</div>
+    <h1 class="title">The Firefighter <em>logbook</em>, worked through question by question.</h1>
+    <p class="lede">A working reference for <b>EAM / Superuser Privilege Management (SPM)</b> interview rounds — centralized vs. decentralized design, the 4010 / 4015 parameters, owner–controller governance, and the full firefighter lifecycle end to end.</p>
+    <div class="ticket-badge">
+      <span>🎫</span> LOG REF: EAM-INT-PREP &nbsp;|&nbsp; STATUS: <b style="color:var(--ok)">READY FOR REVIEW</b>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    <input type="text" id="searchInput" placeholder="Search questions — try “sync”, “4010”, “USR02”, “SAP_ALL”, “controller”…">
+  </div>
+  <span class="count-pill" id="countPill">29 questions</span>
+  <div class="actions no-print">
+    <button class="btn ghost" id="expandAllBtn">Expand all</button>
+    <button class="btn" id="downloadBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      Download PDF
+    </button>
+  </div>
+</div>
+
+<div class="chips" id="chipRow">
+  <div class="chip active" data-topic="all">All topics</div>
+  <div class="chip" data-topic="architecture">Architecture</div>
+  <div class="chip" data-topic="config">Parameters & Config</div>
+  <div class="chip" data-topic="governance">Owner / Controller</div>
+  <div class="chip" data-topic="troubleshoot">Troubleshooting</div>
+  <div class="chip" data-topic="lifecycle">Assignment & Lifecycle</div>
+  <div class="chip" data-topic="process">End-to-End Process</div>
+  <div class="chip" data-topic="useradmin">User Administration</div>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar no-print">
+    <div class="side-card">
+      <h3>Jump to section</h3>
+      <div class="toc-item" data-jump="sec-architecture"><span>Architecture</span><span class="n">03</span></div>
+      <div class="toc-item" data-jump="sec-config"><span>Parameters & Config</span><span class="n">04</span></div>
+      <div class="toc-item" data-jump="sec-governance"><span>Owner / Controller</span><span class="n">05</span></div>
+      <div class="toc-item" data-jump="sec-troubleshoot"><span>Troubleshooting</span><span class="n">01</span></div>
+      <div class="toc-item" data-jump="sec-lifecycle"><span>Assignment & Lifecycle</span><span class="n">03</span></div>
+      <div class="toc-item" data-jump="sec-process"><span>End-to-End Process</span><span class="n">01</span></div>
+      <div class="toc-item" data-jump="sec-useradmin"><span>User Administration</span><span class="n">11</span></div>
+    </div>
+
+    <div class="side-card">
+      <h3>Parameter quick sheet</h3>
+      <div class="param-row"><span class="code">4010</span><span class="desc">Role that identifies a Firefighter ID</span></div>
+      <div class="param-row"><span class="code">4015</span><span class="desc">Centralized / decentralized switch</span></div>
+      <div class="param-row"><span class="code">S_RFC</span><span class="desc">Auth object on the FFID role</span></div>
+      <div class="param-row"><span class="code">GRAC_SPM_FFID</span><span class="desc">Standard FFID identifier role</span></div>
+    </div>
+
+    <div class="side-card">
+      <h3>Handy tables & tcodes</h3>
+      <div class="param-row"><span class="code">USR02</span><span class="desc">Lock status, validity, last logon</span></div>
+      <div class="param-row"><span class="code">USR21</span><span class="desc">User ID → personnel/address number</span></div>
+      <div class="param-row"><span class="code">ADR6</span><span class="desc">Email addresses by address number</span></div>
+      <div class="param-row"><span class="code">USR40</span><span class="desc">Illegal / prohibited passwords</span></div>
+      <div class="param-row"><span class="code">SU10</span><span class="desc">Mass user maintenance</span></div>
+      <div class="param-row"><span class="code">EWZ5</span><span class="desc">Mass lock/unlock all users</span></div>
+    </div>
+
+    <div class="profile-card">
+      <div class="name">Sajid Ahmad</div>
+      <div class="role">Associate Consultant · Capgemini · GE Vernova</div>
+      SAP Security & GRC — Access Control (ARA · ARM · EAM · BRM), MSMP workflow, S/4HANA & Fiori authorizations.
+    </div>
+  </aside>
+
+  <main id="mainContent">
+
+    <div class="section-block" id="sec-troubleshoot">
+      <div class="section-head"><span class="tag">01</span><h2>Firefighter ID not visible in GRC</h2></div>
+      <p class="section-sub">The most common “gotcha” question — it's almost always a synchronization gap, not a config error.</p>
+
+      <div class="qa-card" data-topic="troubleshoot troubleshoot-a">
+        <div class="qa-q"><span class="qid">Q1</span><span class="qtext">I created a Firefighter ID in the connector system, but I can't find it when I search in GRC. What's the likely cause?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Firefighter IDs are created as service IDs directly in the connector (plug-in) system, so GRC won't know about a new one until a sync brings it across. Run a <span class="tcode">Repository Object Sync</span> (incremental first, then a full sync is recommended) so the connector's user master data lands in GRC.</p>
+          <p>Sync alone isn't enough, though — the service ID also has to carry the role named in parameter <span class="tcode">4010</span> (standard: <span class="role-badge">GRAC_SPM_FFID</span>). Without that role assigned in the connector system, GRC has no way to recognize the ID as a firefighter at all, even after a successful sync.</p>
+          <div class="callout"><b>Two checks, in order</b>1) Has the repository sync run since the ID was created? 2) Does the ID actually hold the 4010 identifier role in that connector?</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="section-block" id="sec-architecture">
+      <div class="section-head"><span class="tag">02</span><h2>Architecture — Centralized vs. Decentralized</h2></div>
+      <p class="section-sub">The opening question in almost every EAM round — get the mental model right before anything else.</p>
+
+      <div class="qa-card" data-topic="architecture">
+        <div class="qa-q"><span class="qid">Q2</span><span class="qtext">What's the difference between centralized and decentralized firefighter?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>It's about where the firefighter user logs in first. In a <b>centralized</b> setup, the firefighter user logs into the GRC system itself and launches the Superuser Privilege Management transaction there; GRC then shows the firefighter IDs available to that user across the connected backend systems, and hands off into whichever connector is needed.</p>
+          <p>In a <b>decentralized</b> setup, the firefighter user logs directly into the connector (backend) system — not GRC — and launches the local firefighter transaction there, which shows only the IDs available in that specific system.</p>
+          <div class="callout"><b>One-line answer</b>Centralized: log into GRC, then reach the connector via the FFID. Decentralized: log straight into the connector and use the FFID locally.</div>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="architecture">
+        <div class="qa-q"><span class="qid">Q3</span><span class="qtext">What's the difference between ID-based and role-based firefighter?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>In the <b>ID-based</b> model, a dedicated firefighter service ID is created and temporarily assigned to whichever firefighter user needs elevated access — this is the far more common pattern.</p>
+          <p>In the <b>role-based</b> model, there's no separate service ID; instead a firefighter role carrying the elevated authorizations is assigned directly to the user's own ID when the need arises.</p>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="section-block" id="sec-config">
+      <div class="section-head"><span class="tag">03</span><h2>Parameters & Configuration</h2></div>
+      <p class="section-sub">The 4000-series parameters and the authorization footprint interviewers probe for depth of hands-on config work.</p>
+
+      <div class="qa-card" data-topic="config">
+        <div class="qa-q"><span class="qid">Q4</span><span class="qtext">Which parameter switches the system between centralized and decentralized firefighter?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Parameter <span class="tcode">4015</span>, maintained in SPRO, controls this. It's a single toggle that decides whether the landscape behaves as centralized or decentralized firefighter.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="config">
+        <div class="qa-q"><span class="qid">Q5</span><span class="qtext">Which parameter tells GRC how to recognize a Firefighter ID, and what goes into it?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Parameter <span class="tcode">4010</span> holds the name of a <b>role</b> — the standard delivered role is <span class="role-badge">GRAC_SPM_FFID</span>. Whatever role is entered here must be assigned, in every connector system, to each service ID that should function as a firefighter.</p>
+          <p>Practically: if GRC is linked to three or four backend systems, that same identifier role has to exist in each of them and be assigned to the relevant service IDs — GRC only recognizes an ID as a firefighter because it's carrying this role, nothing else marks it as one.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="config">
+        <div class="qa-q"><span class="qid">Q6</span><span class="qtext">Across multiple connectors, does the 4010 role name have to be identical, or can it vary?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>It doesn't have to be identical — SPRO settings allow different identifier role names per connector — but keeping one common role name across all centralized connectors is the accepted good practice, purely for ease of identification.</p>
+          <p>Decentralized landscapes tend to break from that pattern anyway, since each connector's firefighter concept is managed more independently and often uses its own role name.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="config">
+        <div class="qa-q"><span class="qid">Q7</span><span class="qtext">What authorization object sits inside the Firefighter ID identifier role?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Just one: <span class="tcode">S_RFC</span>. The role's job is purely to mark the ID as a firefighter for GRC's recognition — it isn't where the elevated business authorizations live.</p>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="section-block" id="sec-governance">
+      <div class="section-head"><span class="tag">04</span><h2>Owner & Controller Governance</h2></div>
+      <p class="section-sub">Segregation-of-duties logic behind who can approve, who can review, and where the guardrails sit.</p>
+
+      <div class="qa-card" data-topic="governance">
+        <div class="qa-q"><span class="qid">Q8</span><span class="qtext">What's the difference between a firefighter owner and a firefighter controller?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>The <b>owner</b> approves the assignment of a Firefighter ID to a firefighter user. The <b>controller</b> reviews the usage logs generated once that ID has been used, and signs off on them.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="governance">
+        <div class="qa-q"><span class="qid">Q9</span><span class="qtext">Is a controller mandatory for every Firefighter ID?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>No — a Firefighter ID can technically exist without a controller assigned. Whether that's allowed in practice is governed by a related SPRO parameter setting, so it's a policy choice as much as a technical one.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="governance">
+        <div class="qa-q"><span class="qid">Q10</span><span class="qtext">Can the same person be both the owner and the controller for an ID?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Technically yes, but it isn't recommended — it undermines the segregation between approving usage and independently reviewing it, which is the entire point of splitting the two roles.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="governance">
+        <div class="qa-q"><span class="qid">Q11</span><span class="qtext">Can an owner or controller raise the access request for the very Firefighter ID they own or control?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Strictly, no — an owner shouldn't be the one requesting the ID they themselves own, and this can be actively blocked through SPRO parameter settings rather than left to policy alone.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="governance">
+        <div class="qa-q"><span class="qid">Q12</span><span class="qtext">How does a controller actually review the firefighter logs?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>The controller receives the log request either as a notification or through an MSMP workflow item sitting in their inbox. Opening it shows every transaction the firefighter user executed under that ID, which the controller then reviews and signs off on.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="governance">
+        <div class="qa-q"><span class="qid">Q13</span><span class="qtext">Can a controller reject a firefighter log?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>No — logs can't be rejected outright. If something needs clarification, the controller can only send it back to the firefighter user to explain the usage, not reject it as a formal action.</p>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="section-block" id="sec-lifecycle">
+      <div class="section-head"><span class="tag">05</span><h2>Assignment & Lifecycle</h2></div>
+      <p class="section-sub">Day-to-day operational questions — how IDs actually get into a user's hands, and for how long.</p>
+
+      <div class="qa-card" data-topic="lifecycle">
+        <div class="qa-q"><span class="qid">Q14</span><span class="qtext">A firefighter user ran transactions, but the controller never got a notification or a review workflow item. What could be wrong?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Work through it as a short checklist rather than one guess:</p>
+          <p><b>1. Log sync job</b> — the firefighter log sync job may not have run; regenerate/run it so the logs actually get pulled into GRC.<br>
+          <b>2. Workflow trigger</b> — confirm the review workflow actually fired and routed to the controller.<br>
+          <b>3. Controller assignment</b> — check the controller is genuinely assigned to that specific Firefighter ID.<br>
+          <b>4. Access & notification config</b> — verify the controller has access to view/approve the request, and that they're correctly maintained for notifications in the MSMP workflow for the log review process.</p>
+          <div class="callout warn"><b>Interviewer signal</b>Naming "log sync job" alone is a shallow answer — walking through all four checks shows you've actually supported this in production.</div>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="lifecycle">
+        <div class="qa-q"><span class="qid">Q15</span><span class="qtext">In how many ways can a Firefighter ID be assigned to a firefighter user?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Two ways: <b>(1) via a GRC access request</b>, raised through the standard access request workflow set up in MSMP, or <b>(2) via direct admin assignment</b>, done through the GRC administration screens in NWBC without going through a request.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="lifecycle">
+        <div class="qa-q"><span class="qid">Q16</span><span class="qtext">For how many days can a Firefighter ID be assigned to a user?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>There's no fixed number — it's project-specific, commonly anywhere from a single day up to a month depending on organizational policy. The default validity period itself is also configurable through parameters.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="lifecycle">
+        <div class="qa-q"><span class="qid">Q17</span><span class="qtext">What kinds of activity do firefighter logs actually capture?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>This is configurable via parameters — logs can be scoped to just transactional activity, or extended to also pull in OS-level logs, database-level logs, and similar system logs depending on what the parameter settings enable.</p>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="section-block" id="sec-process">
+      <div class="section-head"><span class="tag">06</span><h2>The End-to-End Process</h2></div>
+      <p class="section-sub">The question that decides the interview — walking through the full firefighter build from a blank system.</p>
+
+      <div class="flow-wrap">
+        <div class="flow">
+          <div class="flow-step"><div class="num">1</div><div class="lbl">Configure 4000-series params (4010 role, 4015 mode)</div></div>
+          <div class="flow-step"><div class="num">2</div><div class="lbl">Activate sync & FF log sync jobs</div></div>
+          <div class="flow-step"><div class="num">3</div><div class="lbl">Set up MSMP: FFID request & log review workflows</div></div>
+          <div class="flow-step"><div class="num">4</div><div class="lbl">Create FFID, FF user, owner, controller, reason codes</div></div>
+          <div class="flow-step"><div class="num">5</div><div class="lbl">Sync FFIDs from connector to GRC</div></div>
+          <div class="flow-step"><div class="num">6</div><div class="lbl">Mark & assign owner/controller to FFID</div></div>
+          <div class="flow-step"><div class="num">7</div><div class="lbl">Assign FFID to FF user, run log sync, controller reviews</div></div>
+        </div>
+      </div>
+
+      <div class="qa-card" data-topic="process">
+        <div class="qa-q"><span class="qid">Q18</span><span class="qtext">Walk me through the complete Firefighter / EAM setup process, end to end.</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p><b>Prerequisites first.</b> Configure the 4000-series parameters — decide role-based vs. ID-based, set the 4010 identifier role, set 4015 for centralized/decentralized. Activate the required background jobs: repository sync, firefighter workflow jobs, and firefighter log sync jobs. Build the MSMP workflows for the FFID access request and for the firefighter log review process.</p>
+          <p><b>Five key elements to create.</b> <span class="role-badge">Firefighter ID</span> — a service ID created in the connector system with elevated access, scoped per module (finance, procurement, sales & distribution each get their own FFID, not one blanket ID with full access). <span class="role-badge">Firefighter user</span> — the dialog user who actually logs in and uses the FFID, sitting in GRC for centralized or in the connector for decentralized, and holding the standard SPM user role. <span class="role-badge">Firefighter owner</span> and <span class="role-badge">Firefighter controller</span> — created in GRC and assigned the standard SPM owner and SPM controller roles respectively. <span class="role-badge">Reason codes</span> — created in GRC and scoped per connector, not shared globally across all connectors.</p>
+          <p><b>Then the operational sequence.</b> Run the repository sync so FFIDs (and, for decentralized, FF users) land in GRC. Once visible, go to Access Control Owners in NWBC and mark the individuals as firefighter owner/controller. Assign that owner and controller to the specific FFID — this has to happen before the ID can be handed to a user. Assign the FFID to the firefighter user, either via a GRC request or admin assignment. The user logs in and executes transactions. Run the FF log sync job so the logs are pulled through, and only then does the controller receive them for review.</p>
+          <div class="callout"><b>Structure to lead with</b>Prerequisites → five key elements → sync → owner/controller marking & assignment → FFID-to-user assignment → usage → log sync → controller review. Naming this sequence, in order, is usually what separates a strong answer from a vague one.</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="section-block" id="sec-useradmin">
+      <div class="section-head"><span class="tag">07</span><h2>User Administration & Housekeeping</h2></div>
+      <p class="section-sub">General SAP Security fundamentals — user types, locks, mass maintenance, and the tables interviewers expect you to know cold.</p>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q19</span><span class="qtext">What user types exist in SAP, and which type is a Firefighter ID?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>SAP has five user types: <b>Dialog</b>, <b>Service</b>, <b>System</b>, <b>Communication</b>, and <b>Reference</b>. Dialog and Service allow interactive GUI logon; System, Communication, and Reference do not.</p>
+          <p>A Firefighter ID is created as a <b>Service</b> user — that's the standard answer interviewers are listening for.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q20</span><span class="qtext">A Firefighter ID is a service user, which normally allows GUI logon — how would you restrict GUI logon on it specifically?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>This is a genuinely tricky follow-up that catches people off guard in the interview. Service users are GUI-logon-capable by default, but a service ID can still be hardened against interactive logon through additional restriction steps at the user/logon-security level, on top of the usual service-user setup.</p>
+          <div class="callout warn"><b>Honest answer beats a guess</b>If you haven't implemented this yourself, it's fine to say so and describe the direction (restricting interactive logon capability on an otherwise GUI-enabled service user) rather than inventing exact steps.</div>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q21</span><span class="qtext">Why not make the Firefighter ID a System user instead of a Service user?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>In practice, Firefighter IDs are consistently built as Service users, not System users — System users don't support the interactive logon a firefighter user needs when they pick up the ID and work in the system. It's a reasonable question to flag as uncommon/unused in real projects if you haven't seen a System-user implementation of it.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q22</span><span class="qtext">What are the different user lock status values in SAP?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>These show up as numeric codes on the user master (in table <span class="tcode">USR02</span>):</p>
+          <p><span class="tcode">0</span> Unlocked &nbsp;·&nbsp; <span class="tcode">32</span> Locked by CUA &nbsp;·&nbsp; <span class="tcode">64</span> Locked by the system administrator &nbsp;·&nbsp; <span class="tcode">128</span> Locked due to repeated incorrect logon attempts &nbsp;·&nbsp; <span class="tcode">192</span> A combination — locked due to incorrect logons and by the administrator/system.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q23</span><span class="qtext">How do you find which users are currently active in the system?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Query table <span class="tcode">USR02</span> — it holds lock status, validity dates, and last logon information per user. To get "active as of today," filter for lock status <span class="tcode">0</span> (unlocked) and a validity end date greater than or equal to today's date.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q24</span><span class="qtext">You have a list of user IDs — how do you retrieve their email addresses?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>The quick operational route is <span class="tcode">SU10</span> → Address Data tab → feed in the user IDs and execute; it returns the email addresses directly. That's the practical, day-to-day answer.</p>
+          <p>But interviewers are usually fishing for the <b>table-level</b> route: email addresses live in <span class="tcode">ADR6</span>, which is keyed by personnel/address number rather than user ID. So the lookup is two-step — first pull each user's personnel number from <span class="tcode">USR21</span> using the user ID, then feed that personnel number into <span class="tcode">ADR6</span> to get the email address.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q25</span><span class="qtext">How can you lock all users in the system at once?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Two options: mass-maintain and lock everyone through <span class="tcode">SU10</span>, or use transaction <span class="tcode">EWZ5</span>, which is purpose-built for mass locking/unlocking of all users in one go.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q26</span><span class="qtext">Where would you check for illegal or rejected passwords?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Table <span class="tcode">USR40</span> holds the list of illegal/prohibited password patterns configured in the system. It's a less commonly asked table, but worth knowing by name.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q27</span><span class="qtext">What's the difference between SAP_ALL and SAP_NEW?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p><span class="role-badge">SAP_ALL</span> grants authorization to every authorization object in the system. <span class="role-badge">SAP_NEW</span> is narrower and specifically covers <b>new</b> authorization objects introduced during a system upgrade — it's generated so that existing roles don't unexpectedly fail checks against objects that didn't exist before the upgrade.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q28</span><span class="qtext">How do you generally handle user termination and onboarding?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>Fair to open with: this is always client- and project-specific, so describe the common pattern rather than claiming one universal process. For <b>termination</b>: lock the user and end their validity date as soon as the exit is confirmed, then a scheduled background job typically removes the assigned roles automatically after a defined grace period — often 30 or 60 days. <b>Onboarding</b> mirrors this in reverse, driven by whatever access-request workflow the client has standardized on.</p>
+        </div></div>
+      </div>
+
+      <div class="qa-card" data-topic="useradmin">
+        <div class="qa-q"><span class="qid">Q29</span><span class="qtext">You need to assign 1,000 roles across 500 users — how do you approach it, especially if the roles aren't the same for every user?</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="qa-a"><div class="qa-a-inner">
+          <p>If the same set of roles applies to all the users, <span class="tcode">SU10</span> handles it in one mass-maintenance run. The moment the role assignments differ per user — which is the realistic scenario at this scale — SU10 alone won't cut it, since it applies one common role list per run.</p>
+          <p>The fallback there is a scripted approach: build an <b>eCATT</b> (or similar) script that takes each user paired with their specific role list as input and executes the assignments in bulk, rather than doing 500 individual manual assignments.</p>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <div class="big">No matching questions</div>
+      <div>Try a different keyword or clear the topic filter.</div>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  EAM / FIREFIGHTER INTERVIEW CONSOLE &nbsp;·&nbsp; COMPILED FOR INTERVIEW PREPARATION &nbsp;·&nbsp; NOT AN OFFICIAL SAP DOCUMENT
+</footer>
+
+<script>
+(function(){
+  const cards = Array.from(document.querySelectorAll('.qa-card'));
+  const searchInput = document.getElementById('searchInput');
+  const chips = Array.from(document.querySelectorAll('.chip'));
+  const countPill = document.getElementById('countPill');
+  const emptyState = document.getElementById('emptyState');
+  const expandAllBtn = document.getElementById('expandAllBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  let activeTopic = 'all';
+  let expanded = false;
+
+  // Accordion toggle
+  cards.forEach(card => {
+    const q = card.querySelector('.qa-q');
+    const a = card.querySelector('.qa-a');
+    q.addEventListener('click', () => {
+      const isOpen = card.classList.contains('open');
+      if(isOpen){
+        card.classList.remove('open');
+        a.style.maxHeight = null;
+      } else {
+        card.classList.add('open');
+        a.style.maxHeight = a.scrollHeight + 'px';
+      }
+    });
+  });
+
+  function recalcOpenHeights(){
+    cards.forEach(card=>{
+      if(card.classList.contains('open')){
+        const a = card.querySelector('.qa-a');
+        a.style.maxHeight = a.scrollHeight + 'px';
+      }
+    });
+  }
+
+  function applyFilters(){
+    const term = searchInput.value.trim().toLowerCase();
+    let visibleCount = 0;
+    document.querySelectorAll('.section-block').forEach(block => block.dataset.hiddenCount = 0);
+
+    cards.forEach(card => {
+      const topics = card.dataset.topic.split(' ');
+      const topicMatch = activeTopic === 'all' || topics.includes(activeTopic);
+      const text = card.innerText.toLowerCase();
+      const searchMatch = term === '' || text.includes(term);
+      const show = topicMatch && searchMatch;
+      card.style.display = show ? '' : 'none';
+      if(show) visibleCount++;
+    });
+
+    // hide section blocks with zero visible cards (but keep the process flow diagram section logic simple)
+    document.querySelectorAll('.section-block').forEach(block=>{
+      const visibleCards = Array.from(block.querySelectorAll('.qa-card')).filter(c => c.style.display !== 'none');
+      const hasFlow = block.querySelector('.flow-wrap');
+      block.style.display = (visibleCards.length === 0 && !(hasFlow && term==='' )) ? 'none' : '';
+      if(visibleCards.length === 0 && hasFlow && term !== '') block.style.display = 'none';
+    });
+
+    countPill.textContent = visibleCount + (visibleCount === 1 ? ' question' : ' questions');
+    emptyState.style.display = visibleCount === 0 ? '' : 'none';
+    recalcOpenHeights();
+  }
+
+  searchInput.addEventListener('input', applyFilters);
+
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeTopic = chip.dataset.topic;
+      applyFilters();
+    });
+  });
+
+  expandAllBtn.addEventListener('click', () => {
+    expanded = !expanded;
+    cards.forEach(card => {
+      if(card.style.display === 'none') return;
+      const a = card.querySelector('.qa-a');
+      if(expanded){
+        card.classList.add('open');
+        a.style.maxHeight = a.scrollHeight + 'px';
+      } else {
+        card.classList.remove('open');
+        a.style.maxHeight = null;
+      }
+    });
+    expandAllBtn.textContent = expanded ? 'Collapse all' : 'Expand all';
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    // expand everything so the PDF captures full content, then print
+    cards.forEach(card => {
+      card.classList.add('open');
+      const a = card.querySelector('.qa-a');
+      a.style.maxHeight = 'none';
+    });
+    setTimeout(() => window.print(), 80);
+  });
+
+  // sidebar jump
+  document.querySelectorAll('.toc-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const target = document.getElementById(item.dataset.jump);
+      if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+
+  window.addEventListener('resize', recalcOpenHeights);
+})();
+</script>
+
+</body>
+</html>
